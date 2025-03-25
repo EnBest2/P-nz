@@ -1,0 +1,168 @@
+
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <title>Pénzügyeim</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js');
+    }
+    if ('Notification' in window && Notification.permission !== 'granted') {
+      Notification.requestPermission();
+    }
+  </script>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      margin: 0;
+      background: url('background.jpg') no-repeat center center fixed;
+      background-size: cover;
+      color: #fff;
+    }
+    .container {
+      background: rgba(0, 0, 0, 0.5);
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 600px;
+      margin: auto;
+    }
+    h1 { font-size: 24px; }
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      margin: 5px 0;
+      font-size: 16px;
+      border-radius: 5px;
+      border: none;
+    }
+    ul { list-style: none; padding: 0; }
+    li {
+      background: rgba(255, 255, 255, 0.1);
+      margin: 5px 0;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      border-radius: 5px;
+    }
+    .delete {
+      background: red;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      cursor: pointer;
+      margin-top: 5px;
+    }
+    canvas { margin-top: 20px; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Egyenleg: <span id="balance">0</span> Ft</h1>
+  <input id="title" placeholder="Megnevezés">
+  <input id="amount" type="number" placeholder="Összeg">
+  <input id="date" type="date">
+  <select id="category">
+    <option value="Étel">🍽️ Étel</option>
+    <option value="Szórakozás">🎮 Szórakozás</option>
+    <option value="Közlekedés">✈️ Közlekedés</option>
+    <option value="Ruházat">👕 Ruházat</option>
+    <option value="Egészség">⚕️ Egészség</option>
+    <option value="Egyéb">🔧 Egyéb</option>
+  </select>
+  <button onclick="add()">Hozzáadás</button>
+  <ul id="list"></ul>
+  <canvas id="chart" width="400" height="200"></canvas>
+</div>
+
+<script>
+  let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
+
+  function notify(msg) {
+    if (Notification.permission === "granted") {
+      new Notification("Pénzügyeim", { body: msg });
+    }
+  }
+
+  function updateUI() {
+    const list = document.getElementById('list');
+    const balance = document.getElementById('balance');
+    list.innerHTML = '';
+    let sum = 0;
+    const categories = {};
+
+    transactions.forEach((t, index) => {
+      const li = document.createElement('li');
+      li.innerHTML = `
+        <strong>${t.category}</strong> - ${parseFloat(t.amount).toFixed(2)} Ft
+        <small>${t.date} | ${t.title}</small>
+        <button class="delete" onclick="remove(${index})">Törlés</button>
+      `;
+      list.appendChild(li);
+      if (!categories[t.category]) categories[t.category] = 0;
+      categories[t.category] += parseFloat(t.amount);
+      sum += parseFloat(t.amount);
+    });
+
+    balance.textContent = sum.toFixed(2);
+    updateChart(categories);
+  }
+
+  function add() {
+    const title = document.getElementById('title').value.trim();
+    const amount = document.getElementById('amount').value.trim();
+    const date = document.getElementById('date').value;
+    const category = document.getElementById('category').value;
+
+    if (!title || !amount || isNaN(amount) || !date) {
+      alert('Tölts ki minden mezőt helyesen!');
+      return;
+    }
+
+    const transaction = { title, amount, date, category };
+    transactions.push(transaction);
+    localStorage.setItem('transactions', JSON.stringify(transactions));
+    document.getElementById('title').value = '';
+    document.getElementById('amount').value = '';
+    document.getElementById('date').value = '';
+    notify(`Hozzáadva: ${amount} Ft - ${category}`);
+    updateUI();
+  }
+
+  function remove(index) {
+    transactions.splice(index, 1);
+    localStorage.setItem('transactions', JSON.stringify(transactions));
+    updateUI();
+  }
+
+  let chart;
+  function updateChart(data) {
+    const ctx = document.getElementById('chart').getContext('2d');
+    if (chart) chart.destroy();
+    chart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: Object.keys(data),
+        datasets: [{
+          label: 'Kiadás kategóriánként (Ft)',
+          data: Object.values(data),
+          backgroundColor: 'rgba(255, 206, 86, 0.6)'
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  updateUI();
+</script>
+</body>
+</html>
