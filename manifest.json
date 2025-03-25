@@ -1,0 +1,9 @@
+{
+  "name": "Pénzügyeim",
+  "short_name": "Pénzügyek",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "description": "Egyszerű pénzügyi nyilvántartó app",
+  "icons": []
+}
